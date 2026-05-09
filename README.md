@@ -226,9 +226,3 @@ mvn install -DskipTests
 Liên hệ lead để lấy hướng dẫn truy cập artifact repository.
 
 ---
-
-## Tham chiếu
-
-- **base-saola Framework**: `vn.saolasoft:base-saola:6.5.1`
-- **Repository**: https://github.com/huynguyenkhac17/product-management
-- **Tài liệu Saola**: Xem `DOCUMENTATION.md` của base-saola
