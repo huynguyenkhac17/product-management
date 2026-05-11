@@ -22,3 +22,12 @@ spring:
       allowed-origins: "http://localhost:5173"
       allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
       allowed-headers: "*"
+
+  app:
+  jwt:
+    secret: "secretKeyMustBeAtLeast32CharIsOk"
+    expiration-ms: 86400000
+  auth:
+    username: admin
+    password: admin123
+    user-id: 1
