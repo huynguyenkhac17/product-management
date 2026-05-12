@@ -33,6 +33,7 @@ public class ProductServiceImpl
 
     // Khai báo các cột cho phép client sắp xếp (ORDER BY).
     // Chỉ những cột trong Set này mới được chấp nhận, tránh lộ cột nội bộ. (Hard Separate Entity & API)
+    // Nếu không hợp lệ / rỗng → fallback về không sort.
     @Override
     public Set<String> getSortableColumns() {
         return Set.of("id", "name", "price", "quantity", "dateCreated");
