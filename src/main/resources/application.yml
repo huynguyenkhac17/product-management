@@ -7,6 +7,8 @@ spring:
     username: root
     password:                # mysql qua XAMPP nên mặc định không có password
     driver-class-name: com.mysql.cj.jdbc.Driver
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
 
   jpa:
     hibernate:
