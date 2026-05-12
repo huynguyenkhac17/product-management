@@ -9,6 +9,8 @@ import com.example.product.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import vn.saolasoft.base.api.method.AuditableDtoAPIMethod;
 import vn.saolasoft.base.api.response.*;
@@ -22,8 +24,7 @@ import java.util.List;
 public class ProductController {
 
     // AuditableDtoAPIMethod là lớp helper của framework: gói sẵn try-catch, log, build response chuẩn.
-    // Ko cần viết try-catch trong controller, gọi luôn.
-    private final AuditableDtoAPIMethod<ProductGet, Product, String> api; // Tiện.
+    private final AuditableDtoAPIMethod<ProductGet, Product, String> api;
     private final ProductService productService;
 
     public ProductController(ProductService productService) {
@@ -31,10 +32,14 @@ public class ProductController {
         this.api = new AuditableDtoAPIMethod<>(productService);
     }
 
-    // ───────────────────────────────────────────────
+    // Lấy userId hiện tại từ JWT (đã được JwtAuthFilter set principal = Long).
+    private Long currentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof Long id) return id;
+        throw new IllegalStateException("No authenticated user in context");
+    }
+
     // GET /api/products?firstRow=0&maxResults=20&orderBy=+name
-    // Lấy danh sách sản phẩm chưa void, có phân trang
-    // ───────────────────────────────────────────────
     @GetMapping
     public ResponseEntity<APIListResponse<List<ProductGet>>> getList(
             @RequestParam(defaultValue = "0")   int firstRow,
@@ -45,68 +50,35 @@ public class ProductController {
         return api.getList(pageInfo);
     }
 
-    // ───────────────────────────────────────────────
     // GET /api/products/{id}
-    // Lấy chi tiết 1 sản phẩm theo id
-    // ───────────────────────────────────────────────
     @GetMapping("/{id}")
     public ResponseEntity<APIResponse<ProductGet>> getById(@PathVariable String id) {
         return api.getById(id);
     }
 
-    // ───────────────────────────────────────────────
     // POST /api/products
-    // Tạo sản phẩm mới
-    // Header: X-User-Id: 1
-    // Body: { "name": "...", "price": 100000, ... }
-    // ───────────────────────────────────────────────
     @PostMapping
-    public ResponseEntity<APIResponse<String>> create(
-            @Valid @RequestBody ProductCreate dto,
-            @RequestHeader(value = "X-User-Id", defaultValue = "1") Long callerId) {
-
-        return api.create(dto, callerId);
+    public ResponseEntity<APIResponse<String>> create(@Valid @RequestBody ProductCreate dto) {
+        return api.create(dto, currentUserId());
     }
 
-    // ───────────────────────────────────────────────
     // PUT /api/products
-    // Cập nhật sản phẩm (phải có id trong body)
-    // Header: X-User-Id: 1
-    // Body: { "id": "...", "name": "...", "price": 200000, ... }
-    // ───────────────────────────────────────────────
     @PutMapping
-    public ResponseEntity<APIResponse<String>> update(
-            @Valid @RequestBody ProductUpdate dto,
-            @RequestHeader(value = "X-User-Id", defaultValue = "1") Long callerId) {
-
-        return api.update(dto, callerId);
+    public ResponseEntity<APIResponse<String>> update(@Valid @RequestBody ProductUpdate dto) {
+        return api.update(dto, currentUserId());
     }
 
-    // ───────────────────────────────────────────────
-    // DELETE /api/products/{id}
-    // Xóa mềm sản phẩm (voided = true, vẫn còn trong DB)
-    // Header: X-User-Id: 1
-    // ───────────────────────────────────────────────
+    // DELETE /api/products/{id}  — xóa mềm (voided = true)
     @DeleteMapping("/{id}")
-    public ResponseEntity<APIResponse<String>> delete(
-            @PathVariable String id,
-            @RequestHeader(value = "X-User-Id", defaultValue = "1") Long callerId) {
-
-        return api.delete(id, callerId);
+    public ResponseEntity<APIResponse<String>> delete(@PathVariable String id) {
+        return api.delete(id, currentUserId());
     }
 
-    // ───────────────────────────────────────────────
-    // POST /api/products/{id}/restore
-    // Khôi phục sản phẩm đã xóa mềm (voided → false)
-    // Header: X-User-Id: 1
-    // ───────────────────────────────────────────────
+    // POST /api/products/{id}/restore  — khôi phục bản ghi đã xóa mềm
     @PostMapping("/{id}/restore")
-    public ResponseEntity<APIResponse<String>> restore(
-            @PathVariable String id,
-            @RequestHeader(value = "X-User-Id", defaultValue = "1") Long callerId) {
-
+    public ResponseEntity<APIResponse<String>> restore(@PathVariable String id) {
         try {
-            String restoredId = productService.restoreByID(id, callerId);
+            String restoredId = productService.restoreByID(id, currentUserId());
             return ResponseEntity.ok(new APIResponse<>(
                     new APIResponseHeader(APIResponseStatus.UNVOIDED, "Product restored"),
                     restoredId));
@@ -118,25 +90,15 @@ public class ProductController {
         }
     }
 
-    // ───────────────────────────────────────────────
     // POST /api/products/search
-    // Tìm kiếm sản phẩm với filter + phân trang
-    // Body: { "keyword": "áo", "minPrice": 50000, "maxPrice": 500000,
-    //         "firstRow": 0, "maxResults": 20, "orderBy": "-price" }
-    // ───────────────────────────────────────────────
     @PostMapping("/search")
-    public ResponseEntity<APIListResponse<List<ProductGet>>> search(
-            @RequestBody SearchRequest body) {
-
+    public ResponseEntity<APIListResponse<List<ProductGet>>> search(@RequestBody SearchRequest body) {
         ProductFilter filter = body.getFilter();
         PaginationInfo pageInfo = new PaginationInfo(body.getFirstRow(), body.getMaxResults(), body.getOrderBy());
         return api.search(filter != null ? filter : new ProductFilter(), pageInfo);
     }
 
-    // ───────────────────────────────────────────────
-    // GET /api/products/voided?firstRow=0&maxResults=20
-    // Lấy danh sách sản phẩm ĐÃ xóa mềm (để xem / restore)
-    // ───────────────────────────────────────────────
+    // GET /api/products/voided
     @GetMapping("/voided")
     public ResponseEntity<APIListResponse<List<ProductGet>>> getVoided(
             @RequestParam(defaultValue = "0")   int firstRow,
@@ -157,8 +119,6 @@ public class ProductController {
         }
     }
 
-    // Wrapper object cho request body của endpoint /search.
-    // Gom filter + thông tin phân trang vào 1 body JSON cho gọn.
     public static class SearchRequest {
         private ProductFilter filter;
         private int firstRow   = 0;
