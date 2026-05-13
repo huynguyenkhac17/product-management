@@ -2,13 +2,16 @@ package com.example.product;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Optional;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 @EnableJpaAuditing(auditorAwareRef = "auditorAware")
 public class App {
 
@@ -16,12 +19,15 @@ public class App {
         SpringApplication.run(App.class, args);
     }
 
-    // Bean này trả về "ai đang thực hiện hành động" để JPA Auditing tự điền
-    // vào các cột creator_id / last_updated_id trong database.
-    // Tạm thời trả cứng 1L (user id = 1).
-    // Thực tế: lấy từ JWT token hoặc SecurityContext.
+    // Lấy userId hiện tại từ SecurityContext (JwtAuthFilter set principal = Long userId).
+    // Nếu chưa đăng nhập (vd: self-register), trả Optional.empty() → JPA bỏ qua audit field.
     @Bean
     public AuditorAware<Long> auditorAware() {
-        return () -> Optional.of(1L);
+        return () -> {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated()) return Optional.empty();
+            Object principal = auth.getPrincipal();
+            return (principal instanceof Long id) ? Optional.of(id) : Optional.empty();
+        };
     }
 }

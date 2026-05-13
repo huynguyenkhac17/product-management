@@ -7,6 +7,7 @@ pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
 pom.xml.next
+DOCUMENTATION.md
 release.properties
 dependency-reduced-pom.xml
 .flattened-pom.xml
@@ -27,3 +28,4 @@ Thumbs.db
 # Local
 *.log
 .env.local
+.claude/
