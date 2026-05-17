@@ -5,16 +5,16 @@ import vn.saolasoft.base.service.dto.DtoGet;
 
 import java.util.Date;
 
-public class UserGet extends DtoGet<User, Long> {
+public class UserDTOGet extends DtoGet<User, Long> {
 
     private String username;
     private String fullName;
     private Boolean enabled;
     private Date dateCreated;
 
-    public UserGet() {}
+    public UserDTOGet() {}
 
-    public UserGet(User u) { super(u); }
+    public UserDTOGet(User u) { super(u); }
 
     @Override
     public void parse(User u) {

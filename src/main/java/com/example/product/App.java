@@ -21,6 +21,7 @@ public class App {
 
     // Lấy userId hiện tại từ SecurityContext (JwtAuthFilter set principal = Long userId).
     // Nếu chưa đăng nhập (vd: self-register), trả Optional.empty() → JPA bỏ qua audit field.
+    @SuppressWarnings("null")
     @Bean
     public AuditorAware<Long> auditorAware() {
         return () -> {

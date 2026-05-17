@@ -3,7 +3,7 @@ package com.example.product.controller;
 import com.example.product.dto.LoginRequest;
 import com.example.product.dto.LoginResponse;
 import com.example.product.dto.RegisterRequest;
-import com.example.product.dto.UserGet;
+import com.example.product.dto.UserDTOGet;
 import com.example.product.entity.User;
 import com.example.product.security.JwtUtil;
 import com.example.product.service.UserService;
@@ -39,9 +39,9 @@ public class AuthController {
 
     // POST /api/auth/register
     @PostMapping("/register")
-    public ResponseEntity<APIResponse<UserGet>> register(@Valid @RequestBody RegisterRequest req) {
+    public ResponseEntity<APIResponse<UserDTOGet>> register(@Valid @RequestBody RegisterRequest req) {
         try {
-            UserGet created = userService.register(req);
+            UserDTOGet created = userService.register(req);
             return ResponseEntity.status(HttpStatus.CREATED).body(new APIResponse<>(
                     new APIResponseHeader(APIResponseStatus.CREATED, "User registered"),
                     created));
@@ -75,14 +75,14 @@ public class AuthController {
 
     // GET /api/auth/me
     @GetMapping("/me")
-    public ResponseEntity<APIResponse<UserGet>> me() {
+    public ResponseEntity<APIResponse<UserDTOGet>> me() {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth == null || !(auth.getPrincipal() instanceof Long userId)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new APIResponse<>(
                         new APIResponseHeader(APIResponseStatus.UNAUTHORIZED, "Not authenticated"), null));
             }
-            UserGet user = userService.getById(userId);
+            UserDTOGet user = userService.getById(userId);
             return ResponseEntity.ok(new APIResponse<>(
                     new APIResponseHeader(APIResponseStatus.FOUND, "User found"), user));
         } catch (ObjectNotFoundException ex) {

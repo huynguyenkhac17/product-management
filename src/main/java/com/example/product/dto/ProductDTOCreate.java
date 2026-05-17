@@ -5,12 +5,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
-import vn.saolasoft.base.service.dto.DtoUpdate;
+import vn.saolasoft.base.service.dto.GeneratedIDDtoCreate;
 
 import java.math.BigDecimal;
-import java.util.Objects;
 
-public class ProductUpdate extends DtoUpdate<Product, String> {
+public class ProductDTOCreate extends GeneratedIDDtoCreate<Product> {
 
     @NotBlank(message = "Tên sản phẩm không được để trống")
     private String name;
@@ -30,51 +29,25 @@ public class ProductUpdate extends DtoUpdate<Product, String> {
     private String sku;
     private String barcode;
 
-    // Framework gọi method này để áp thay đổi lên entity đang có trong DB.
-    // Trả về true  → có thay đổi → framework sẽ gọi repository.save()
-    // Trả về false → không đổi gì → framework bỏ qua, không save (tránh UPDATE thừa)
+    // Framework gọi method này để tạo Entity từ dữ liệu DTO.
+    // Nhiệm vụ: dựng object Product và set các field từ DTO vào.
     @Override
-    public boolean apply(Product product) {
-        boolean changed = false;
-
-        if (!Objects.equals(product.getName(), name)) {
-            product.setName(name);
-            changed = true;
-        }
-        if (!Objects.equals(product.getDescription(), description)) {
-            product.setDescription(description);
-            changed = true;
-        }
-        if (!Objects.equals(product.getPrice(), price)) {
-            product.setPrice(price);
-            changed = true;
-        }
-        if (!Objects.equals(product.getCategoryId(), categoryId)) {
-            product.setCategoryId(categoryId);
-            changed = true;
-        }
-        if (!Objects.equals(product.getQuantity(), quantity)) {
-            product.setQuantity(quantity);
-            changed = true;
-        }
-        if (!Objects.equals(product.getImageUrl(), imageUrl)) {
-            product.setImageUrl(imageUrl);
-            changed = true;
-        }
-        if (!Objects.equals(product.getSku(), sku)) {
-            product.setSku(sku);
-            changed = true;
-        }
-        if (!Objects.equals(product.getBarcode(), barcode)) {
-            product.setBarcode(barcode);
-            changed = true;
-        }
-
-        return changed;
+    public Product toEntry() {
+        Product product = new Product();
+        product.setName(name);
+        product.setDescription(description);
+        product.setPrice(price);
+        product.setCategoryId(categoryId);
+        product.setQuantity(quantity != null ? quantity : 0);
+        product.setImageUrl(imageUrl);
+        product.setSku(sku);
+        product.setBarcode(barcode);
+        return product;
+        // Lưu ý: id sẽ do framework tự sinh UUID, KHÔNG set ở đây
+        // Audit fields (creator, dateCreated...) cũng do framework tự điền
     }
 
-    // ===== Getters & Setters =====
-    // getId() / setId() đã có sẵn trong DtoUpdate cha, không cần khai báo lại
+    // ===== Getters & Setters (cần setter để Jackson deserialize JSON từ request) =====
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

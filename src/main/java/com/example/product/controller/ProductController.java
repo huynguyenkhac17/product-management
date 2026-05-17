@@ -1,8 +1,8 @@
 package com.example.product.controller;
 
-import com.example.product.dto.ProductCreate;
-import com.example.product.dto.ProductGet;
-import com.example.product.dto.ProductUpdate;
+import com.example.product.dto.ProductDTOCreate;
+import com.example.product.dto.ProductDTOGet;
+import com.example.product.dto.ProductDTOUpdate;
 import com.example.product.entity.Product;
 import com.example.product.filter.ProductFilter;
 import com.example.product.service.ProductService;
@@ -24,7 +24,7 @@ import java.util.List;
 public class ProductController {
 
     // AuditableDtoAPIMethod là lớp helper của framework: gói sẵn try-catch, log, build response chuẩn.
-    private final AuditableDtoAPIMethod<ProductGet, Product, String> api;
+    private final AuditableDtoAPIMethod<ProductDTOGet, Product, String> api;
     private final ProductService productService;
 
     public ProductController(ProductService productService) {
@@ -41,7 +41,7 @@ public class ProductController {
 
     // GET /api/products?firstRow=0&maxResults=20&orderBy=+name
     @GetMapping
-    public ResponseEntity<APIListResponse<List<ProductGet>>> getList(
+    public ResponseEntity<APIListResponse<List<ProductDTOGet>>> getList(
             @RequestParam(defaultValue = "0")   int firstRow,
             @RequestParam(defaultValue = "20")  int maxResults,
             @RequestParam(defaultValue = "")    String orderBy) {
@@ -52,19 +52,19 @@ public class ProductController {
 
     // GET /api/products/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<APIResponse<ProductGet>> getById(@PathVariable String id) {
+    public ResponseEntity<APIResponse<ProductDTOGet>> getById(@PathVariable String id) {
         return api.getById(id);
     }
 
     // POST /api/products
     @PostMapping
-    public ResponseEntity<APIResponse<String>> create(@Valid @RequestBody ProductCreate dto) {
+    public ResponseEntity<APIResponse<String>> create(@Valid @RequestBody ProductDTOCreate dto) {
         return api.create(dto, currentUserId());
     }
 
     // PUT /api/products
     @PutMapping
-    public ResponseEntity<APIResponse<String>> update(@Valid @RequestBody ProductUpdate dto) {
+    public ResponseEntity<APIResponse<String>> update(@Valid @RequestBody ProductDTOUpdate dto) {
         return api.update(dto, currentUserId());
     }
 
@@ -92,7 +92,7 @@ public class ProductController {
 
     // POST /api/products/search
     @PostMapping("/search")
-    public ResponseEntity<APIListResponse<List<ProductGet>>> search(@RequestBody SearchRequest body) {
+    public ResponseEntity<APIListResponse<List<ProductDTOGet>>> search(@RequestBody SearchRequest body) {
         ProductFilter filter = body.getFilter();
         PaginationInfo pageInfo = new PaginationInfo(body.getFirstRow(), body.getMaxResults(), body.getOrderBy());
         return api.search(filter != null ? filter : new ProductFilter(), pageInfo);
@@ -100,13 +100,13 @@ public class ProductController {
 
     // GET /api/products/voided
     @GetMapping("/voided")
-    public ResponseEntity<APIListResponse<List<ProductGet>>> getVoided(
+    public ResponseEntity<APIListResponse<List<ProductDTOGet>>> getVoided(
             @RequestParam(defaultValue = "0")   int firstRow,
             @RequestParam(defaultValue = "20")  int maxResults) {
 
         try {
             PaginationInfo pageInfo = new PaginationInfo(firstRow, maxResults);
-            PageOfData<ProductGet> results = productService.getPageOfData(true, pageInfo);
+            PageOfData<ProductDTOGet> results = productService.getPageOfData(true, pageInfo);
             APIListResponseHeader header = new APIListResponseHeader(
                     APIResponseStatus.FOUND,
                     results.getElements().size() + " record(s) found",

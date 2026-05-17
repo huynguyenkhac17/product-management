@@ -1,7 +1,7 @@
 package com.example.product.service.impl;
 
 import com.example.product.dto.RegisterRequest;
-import com.example.product.dto.UserGet;
+import com.example.product.dto.UserDTOGet;
 import com.example.product.entity.User;
 import com.example.product.repository.UserRepository;
 import com.example.product.service.UserService;
@@ -17,7 +17,7 @@ import java.util.Set;
 
 @Service
 public class UserServiceImpl
-        extends VoidableDtoJpaServiceImpl<UserGet, User, Long>
+        extends VoidableDtoJpaServiceImpl<UserDTOGet, User, Long>
         implements UserService {
 
     @Autowired
@@ -32,8 +32,8 @@ public class UserServiceImpl
     }
 
     @Override
-    public UserGet convert(User user) {
-        return new UserGet(user);
+    public UserDTOGet convert(User user) {
+        return new UserDTOGet(user);
     }
 
     @Override
@@ -42,7 +42,7 @@ public class UserServiceImpl
     }
 
     @Override
-    public UserGet register(RegisterRequest req) {
+    public UserDTOGet register(RegisterRequest req) {
         if (userRepository.existsByUsernameAndVoidedFalse(req.getUsername())) {
             throw new DuplicateIdentifierException("Username already exists: " + req.getUsername());
         }
