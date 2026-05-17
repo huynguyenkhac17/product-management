@@ -9,7 +9,7 @@ import vn.saolasoft.base.service.dto.GeneratedIDDtoCreate;
 
 import java.math.BigDecimal;
 
-public class ProductDTOCreate extends GeneratedIDDtoCreate<Product> {
+public class ProductDtoCreate extends GeneratedIDDtoCreate<Product> {
 
     @NotBlank(message = "Tên sản phẩm không được để trống")
     private String name;

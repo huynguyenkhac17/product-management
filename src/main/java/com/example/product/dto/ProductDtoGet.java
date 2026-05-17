@@ -6,7 +6,7 @@ import vn.saolasoft.base.service.dto.DtoGet;
 import java.math.BigDecimal;
 // import java.util.Date;
 
-public class ProductDTOGet extends DtoGet<Product, String> {
+public class ProductDtoGet extends DtoGet<Product, String> {
 
     private String id;
     private String name;
@@ -23,9 +23,9 @@ public class ProductDTOGet extends DtoGet<Product, String> {
     // private Date dateCreated;
     // private Date dateUpdated;
 
-    public ProductDTOGet() {}
+    public ProductDtoGet() {}
 
-    public ProductDTOGet(Product product) {
+    public ProductDtoGet(Product product) {
         super(product); // trigger parse()
     }
 

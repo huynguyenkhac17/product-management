@@ -1,10 +1,10 @@
 package com.example.product.service;
 
-import com.example.product.dto.ProductDTOGet;
+import com.example.product.dto.ProductDtoGet;
 import com.example.product.entity.Product;
 import vn.saolasoft.base.service.VoidableDtoService;
 
-public interface ProductService extends VoidableDtoService<ProductDTOGet, Product, String> {
+public interface ProductService extends VoidableDtoService<ProductDtoGet, Product, String> {
     // VoidableDtoService đã khai báo đầy đủ các method:
     //
     // CRUD cơ bản:

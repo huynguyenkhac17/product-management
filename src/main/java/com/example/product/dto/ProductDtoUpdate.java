@@ -10,7 +10,7 @@ import vn.saolasoft.base.service.dto.DtoUpdate;
 import java.math.BigDecimal;
 import java.util.Objects;
 
-public class ProductDTOUpdate extends DtoUpdate<Product, String> {
+public class ProductDtoUpdate extends DtoUpdate<Product, String> {
 
     @NotBlank(message = "Tên sản phẩm không được để trống")
     private String name;

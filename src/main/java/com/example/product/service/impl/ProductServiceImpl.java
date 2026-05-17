@@ -1,6 +1,6 @@
 package com.example.product.service.impl;
 
-import com.example.product.dto.ProductDTOGet;
+import com.example.product.dto.ProductDtoGet;
 import com.example.product.entity.Product;
 import com.example.product.repository.ProductRepository;
 import com.example.product.service.ProductService;
@@ -12,7 +12,7 @@ import java.util.Set;
 
 @Service
 public class ProductServiceImpl
-        extends VoidableDtoJpaServiceImpl<ProductDTOGet, Product, String>
+        extends VoidableDtoJpaServiceImpl<ProductDtoGet, Product, String>
         implements ProductService {
 
     @Autowired
@@ -27,8 +27,8 @@ public class ProductServiceImpl
     // Framework gọi method này sau mỗi lần lấy Entity từ DB
     // để chuyển Entity → DTO trước khi trả về controller.
     @Override
-    public ProductDTOGet convert(Product product) {
-        return new ProductDTOGet(product);
+    public ProductDtoGet convert(Product product) {
+        return new ProductDtoGet(product);
     }
 
     // Khai báo các cột cho phép client sắp xếp (ORDER BY).
