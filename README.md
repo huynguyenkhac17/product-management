@@ -1,17 +1,22 @@
 # Product Management Backend
 
 ## Tổng quan
-Dự án Quản lý Sản phẩm là một ứng dụng Spring Boot CRUD được xây dựng trên nền tảng **base-saola** framework. Ứng dụng cung cấp RESTful API hoàn chỉnh để quản lý danh sách sản phẩm với các tính năng: CRUD, phân trang, lọc/tìm kiếm, kiểm toán (audit) và xóa logic (soft delete).
+Dự án Quản lý Sản phẩm là một ứng dụng Spring Boot CRUD được xây dựng trên nền tảng **base-saola** framework. Ứng dụng cung cấp RESTful API hoàn chỉnh để:
+
+- Quản lý người dùng (đăng ký, đăng nhập, JWT authentication)
+- Quản lý sản phẩm: CRUD, phân trang, lọc/tìm kiếm, kiểm toán (audit), xóa logic (soft delete) & khôi phục
 
 ## Ngăn xếp công nghệ
 
-| Thành phần              | Phiên bản   |
+| Thành phần             | Phiên bản   |
 |------------------------|-----------|
 | Java                   | 17        |
 | Spring Boot            | 3.2.0     |
+| Spring Security        | 6.x       |
 | Hibernate              | 6.5.1     |
 | Jackson                | 2.15.0    |
 | Jakarta Validation     | 3.1.0     |
+| jjwt (JWT)             | 0.12.x    |
 | base-saola framework   | 6.5.1     |
 
 ---
@@ -22,22 +27,37 @@ Dự án được tổ chức theo kiến trúc phân lớp (Layered Architectur
 
 ```
 src/main/java/com/example/product/
-├── entity/              # Entity models
-│   └── Product
-├── repository/          # Spring Data JPA repositories
-│   └── ProductRepository
-├── service/             # Business logic
-│   ├── ProductService (interface)
-│   └── ProductServiceImpl
-├── dto/                 # DTO classes
-│   ├── ProductGet
-│   ├── ProductCreate
-│   └── ProductUpdate
-├── filter/              # Filter & pagination support
+├── App.java                # Spring Boot entry point + @EnableJpaAuditing
+├── entity/                 # Entity models
+│   ├── Product
+│   └── User
+├── repository/             # Spring Data JPA repositories
+│   ├── ProductRepository
+│   └── UserRepository
+├── service/                # Business logic
+│   ├── ProductService           (interface)
+│   ├── UserService              (interface)
+│   └── impl/
+│       ├── ProductServiceImpl
+│       └── UserServiceImpl
+├── dto/                    # DTO classes (PascalCase: Dto, không phải DTO)
+│   ├── ProductDtoGet
+│   ├── ProductDtoCreate
+│   ├── ProductDtoUpdate
+│   ├── UserDtoGet
+│   ├── RegisterRequest
+│   ├── LoginRequest
+│   └── LoginResponse
+├── filter/                 # Filter & pagination support
 │   └── ProductFilter
-├── controller/          # REST controllers
+├── security/               # JWT + Spring Security
+│   ├── JwtUtil
+│   ├── JwtAuthFilter
+│   └── SecurityConfig
+├── controller/             # REST controllers
+│   ├── AuthController
 │   └── ProductController
-└── resources/           # Configuration files
+└── resources/
     └── application.yml
 ```
 
@@ -49,28 +69,39 @@ src/main/java/com/example/product/
 - **`AuditableEntity`**: thêm `creator`, `dateCreated`, `updater`, `dateUpdated`
 - **`VoidableEntity`**: thêm `voided`, `voidedBy`, `dateVoided`, `voidReason` (xóa logic)
 
-**Product** kế thừa từ `VoidableGeneratedIDEntry<String>` (UUID tự sinh, hỗ trợ soft delete).
+| Entity    | Kế thừa                              | ID          |
+|-----------|--------------------------------------|-------------|
+| `Product` | `VoidableGeneratedIDEntry<String>`   | UUID (String) |
+| `User`    | `VoidableSerialIDEntry<Long>`        | Serial (Long) |
+
+> **Convention dự án:** mọi entity trong dự án đều kế thừa `Voidable*` — mặc định soft-delete.
 
 ### Repository
 
 ```java
 public interface ProductRepository extends VoidableRepository<Product, String> { }
+public interface UserRepository    extends VoidableRepository<User, Long> {
+    Optional<User> findByUsernameAndVoidedFalse(String username);
+    boolean existsByUsernameAndVoidedFalse(String username);
+}
 ```
 
-Cung cấp sẵn:
+Có sẵn:
 - CRUD cơ bản từ `JpaRepository`
 - Specification-based filtering từ `JpaSpecificationExecutor`
 - Xóa logic và khôi phục bản ghi (`voided = false` mặc định)
 
 ### DTO
 
-3 loại DTO tương ứng với 3 thao tác chính:
-
-| DTO              | Mục đích           | Phương thức chính           |
-|------------------|------------------|---------------------------|
-| `ProductGet`     | Trả về cho client | `parse(Product entity)`   |
-| `ProductCreate`  | Tạo mới           | `toEntry()` → Entity      |
-| `ProductUpdate`  | Cập nhật          | `apply(Product) → boolean`|
+| DTO                | Mục đích                | Phương thức chính           |
+|--------------------|-------------------------|-----------------------------|
+| `ProductDtoGet`    | Trả về cho client        | `parse(Product entity)`     |
+| `ProductDtoCreate` | Tạo mới                  | `toEntry()` → Entity        |
+| `ProductDtoUpdate` | Cập nhật                 | `apply(Product) → boolean`  |
+| `UserDtoGet`       | Trả về user (không lộ hash) | `parse(User entity)`     |
+| `RegisterRequest`  | Đăng ký user             | username/password/fullName  |
+| `LoginRequest`     | Đăng nhập                | username/password           |
+| `LoginResponse`    | Token + thông tin user   | token/userId/username/expiresInMs |
 
 ### Service
 
@@ -78,12 +109,21 @@ Cung cấp sẵn:
 
 ```java
 @Service
-public class ProductServiceImpl 
-    extends VoidableDtoJpaServiceImpl<ProductGet, Product, String>
+public class ProductServiceImpl
+    extends VoidableDtoJpaServiceImpl<ProductDtoGet, Product, String>
     implements ProductService { }
 ```
 
-Cung cấp sẵn:
+`UserService` thêm 2 method nghiệp vụ riêng:
+
+```java
+public interface UserService extends VoidableDtoService<UserDtoGet, User, Long> {
+    UserDtoGet register(RegisterRequest req);
+    User authenticate(String username, String rawPassword);
+}
+```
+
+Service cung cấp sẵn:
 - Quản lý CRUD + xóa logic / khôi phục
 - Phân trang & lọc qua `BaseFilter` + `SpecBuilder`
 - Kiểm toán tự động (audit info gắn kèm từ `callerId`)
@@ -95,10 +135,36 @@ Cung cấp sẵn:
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
-    private final AuditableDtoAPIMethod<ProductGet, Product, String> api;
-    // REST endpoints: getList, getById, create, update, delete, search
+    private final AuditableDtoAPIMethod<ProductDtoGet, Product, String> api;
+    // REST endpoints: getList, getById, create, update, delete, restore, search, getVoided
+}
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+    // register, login, me
 }
 ```
+
+`callerId` lấy từ `SecurityContextHolder` (do `JwtAuthFilter` set principal = `userId: Long`).
+
+---
+
+## Authentication & Authorization
+
+### Flow
+
+1. `POST /api/auth/register` → tạo user mới (password hash bằng BCrypt).
+2. `POST /api/auth/login` → trả về JWT (HS256), TTL cấu hình trong `app.jwt.expiration-ms`.
+3. Các request sau gửi header `Authorization: Bearer <token>`.
+4. `JwtAuthFilter` parse token, set `principal = userId` vào `SecurityContext`.
+5. Controller lấy `userId` qua `SecurityContextHolder` để truyền vào `callerId` của `APIMethod`.
+
+### Phân quyền hiện tại
+
+- `/api/auth/**` → public
+- `/api/products/**` → yêu cầu JWT hợp lệ
+- Chưa có role-based access (mọi user đã đăng nhập đều có quyền như nhau).
 
 ---
 
@@ -111,7 +177,7 @@ Mọi endpoint trả về `APIResponse<T>` hoặc `APIListResponse<T>`:
 ```json
 {
   "header": {
-    "datetime": "2026-05-09 10:30:45 +07:00",
+    "datetime": "2026-05-18 10:30:45 +07:00",
     "code": 209,
     "message": "Object found"
   },
@@ -119,24 +185,26 @@ Mọi endpoint trả về `APIResponse<T>` hoặc `APIListResponse<T>`:
 }
 ```
 
-**Status codes**:
-- `209` (FOUND): lấy dữ liệu thành công
-- `211` (DELETED): xóa thành công
-- `212` (UPDATED): cập nhật thành công
-- `452` (INVALID_PARAMETER): dữ liệu không hợp lệ
-- `453` (DUPLICATED): id trùng
-- `454` (PARAMETER_REQUIRED): thiếu field bắt buộc
+**Status codes** (`APIResponseStatus`):
+- `200` (OK), `201` (CREATED), `209` (FOUND)
+- `211` (DELETED), `212` (UPDATED), `213` (VOIDED), `214` (UNVOIDED)
+- `401` (UNAUTHORIZED), `404` (NOT_FOUND)
+- `452` (INVALID_PARAMETER), `453` (DUPLICATED), `454` (PARAMETER_REQUIRED)
+- `500` (INTERNAL_SERVER_ERROR)
 
 ### Exception Mapping
 
 Mọi lỗi nghiệp vụ được tự động xử lý bởi `APIMethod`:
 
-| Exception                       | HTTP Status | Mã Response |
-|---------------------------------|-----------|-----------|
-| `ObjectNotFoundException`        | 400       | 404       |
-| `DuplicateIdentifierException`  | 400       | 453       |
-| `IllegalPropertyException`      | 400       | 452       |
-| `CannotDeleteObjectInUseException` | 400    | 424       |
+| Exception                          | HTTP Status            | Mã Response              |
+|------------------------------------|------------------------|--------------------------|
+| `ObjectNotFoundException`          | 400 BAD_REQUEST        | `NOT_FOUND` (404)        |
+| `DuplicateIdentifierException`     | 400 BAD_REQUEST        | `DUPLICATED` (453)       |
+| `IllegalPropertyException`         | 400 BAD_REQUEST        | `INVALID_PARAMETER` (452)|
+| `MissingRequiredPropertyException` | 400 BAD_REQUEST        | `INVALID_PARAMETER` (452)|
+| `CannotDeleteObjectInUseException` | 400 BAD_REQUEST        | `FAILED_DEPENDENCY` (424)|
+| `APIAuthenticationException`       | 403 FORBIDDEN          | `UNAUTHORIZED` (401)     |
+| bất kỳ `Exception` khác            | 500 INTERNAL_SERVER_ERROR | `INTERNAL_SERVER_ERROR` (500) |
 
 ---
 
@@ -162,11 +230,12 @@ Sắp xếp động qua chuỗi `+col1,-col2` (`+` = ASC, `-` = DESC).
 
 ```java
 public class ProductFilter extends BaseFilter<Product, String> {
-    // Thêm tiêu chí lọc tùy chỉnh
+    private String keyword;       // search name/description
+    // ... getters/setters
 }
 ```
 
-Service sẽ convert `ProductFilter` → `Specification<Product>` tự động.
+Service convert `ProductFilter` → `Specification<Product>` tự động.
 
 ---
 
@@ -186,15 +255,17 @@ base-saola cung cấp sẵn các tiện ích:
 ### Yêu cầu hệ thống
 - **Java**: 17 trở lên
 - **Maven**: 3.6+
-- **Database**: Cấu hình trong `application.yml`
+- **Database**: Cấu hình trong `application.yml` (mặc định MySQL/PostgreSQL/H2 tuỳ profile)
+- **base-saola 6.5.1**: phải có trong local Maven repo (xem mục Ghi chú quan trọng bên dưới)
 
 ### Các bước
 
 ```bash
 # Clone repository
 git clone https://github.com/huynguyenkhac17/product-management.git
+cd product-management
 
-# Cài đặt dependencies
+# Build
 mvn clean install
 
 # Chạy ứng dụng
@@ -202,6 +273,35 @@ mvn spring-boot:run
 ```
 
 API sẽ chạy trên `http://localhost:8080` (hoặc port trong `application.yml`).
+
+### Test nhanh
+
+```bash
+# Đăng ký
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"khoi","password":"secret123","fullName":"Nguyễn Văn Khôi"}'
+
+# Đăng nhập (lấy token)
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"khoi","password":"secret123"}'
+
+# Tạo sản phẩm
+curl -X POST http://localhost:8080/api/products \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"name":"Áo thun nam","price":150000,"quantity":50,"sku":"AT-NAM-001"}'
+```
+
+Danh sách API đầy đủ + payload mẫu: xem [api-test.md](api-test.md).
+
+---
+
+## Tài liệu liên quan
+
+- [DOCUMENTATION.md](DOCUMENTATION.md) — Tài liệu chi tiết về framework base-saola (entity layers, repository, service, API method, exception hierarchy).
+- [api-test.md](api-test.md) — Danh sách endpoint + request/response mẫu.
 
 ---
 
