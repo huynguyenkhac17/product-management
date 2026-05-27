@@ -1,11 +1,15 @@
 package com.example.product.service.impl;
 
+import com.example.product.dto.LoginRequest;
+import com.example.product.dto.LoginResponse;
 import com.example.product.dto.RegisterRequest;
 import com.example.product.dto.UserDtoGet;
 import com.example.product.entity.User;
 import com.example.product.repository.UserRepository;
+import com.example.product.security.JwtUtil;
 import com.example.product.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import vn.saolasoft.base.exception.APIAuthenticationException;
@@ -25,6 +29,12 @@ public class UserServiceImpl
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Value("${app.jwt.expiration-ms}")
+    private long expirationMs;
 
     @Override
     public UserRepository getRepository() {
@@ -60,7 +70,14 @@ public class UserServiceImpl
     }
 
     @Override
-    public User authenticate(String username, String rawPassword) {
+    public LoginResponse login(LoginRequest req) {
+        User user = authenticate(req.getUsername(), req.getPassword());
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+        return new LoginResponse(token, user.getId(), user.getUsername(), expirationMs);
+    }
+
+    // chỉ login() dùng
+    private User authenticate(String username, String rawPassword) {
         User user = userRepository.findByUsernameAndVoidedFalse(username)
                 .orElseThrow(() -> new APIAuthenticationException("Invalid username or password"));
 

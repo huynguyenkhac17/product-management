@@ -7,7 +7,6 @@ import com.example.product.entity.Product;
 import com.example.product.filter.ProductFilter;
 import com.example.product.service.ProductService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -77,17 +76,10 @@ public class ProductController {
     // POST /api/products/{id}/restore  — khôi phục bản ghi đã xóa mềm
     @PostMapping("/{id}/restore")
     public ResponseEntity<APIResponse<String>> restore(@PathVariable String id) {
-        try {
-            String restoredId = productService.restoreByID(id, currentUserId());
-            return ResponseEntity.ok(new APIResponse<>(
-                    new APIResponseHeader(APIResponseStatus.UNVOIDED, "Product restored"),
-                    restoredId));
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new APIResponse<>(
-                            new APIResponseHeader(APIResponseStatus.INTERNAL_SERVER_ERROR, ex.getMessage()),
-                            null));
-        }
+        String restoredId = productService.restoreByID(id, currentUserId());
+        return ResponseEntity.ok(new APIResponse<>(
+                new APIResponseHeader(APIResponseStatus.UNVOIDED, "Product restored"),
+                restoredId));
     }
 
     // POST /api/products/search
@@ -104,19 +96,13 @@ public class ProductController {
             @RequestParam(defaultValue = "0")   int firstRow,
             @RequestParam(defaultValue = "20")  int maxResults) {
 
-        try {
-            PaginationInfo pageInfo = new PaginationInfo(firstRow, maxResults);
-            PageOfData<ProductDtoGet> results = productService.getPageOfData(true, pageInfo);
-            APIListResponseHeader header = new APIListResponseHeader(
-                    APIResponseStatus.FOUND,
-                    results.getElements().size() + " record(s) found",
-                    results.getOffset(), results.getLimit(), results.getTotalElements());
-            return ResponseEntity.ok(new APIListResponse<>(header, results.getElements()));
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new APIListResponse<>(new APIListResponseHeader(
-                            APIResponseStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), firstRow, maxResults, 0), null));
-        }
+        PaginationInfo pageInfo = new PaginationInfo(firstRow, maxResults);
+        PageOfData<ProductDtoGet> results = productService.getPageOfData(true, pageInfo);
+        APIListResponseHeader header = new APIListResponseHeader(
+                APIResponseStatus.FOUND,
+                results.getElements().size() + " record(s) found",
+                results.getOffset(), results.getLimit(), results.getTotalElements());
+        return ResponseEntity.ok(new APIListResponse<>(header, results.getElements()));
     }
 
     public static class SearchRequest {
