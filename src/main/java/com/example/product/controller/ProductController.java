@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.saolasoft.base.api.method.AuditableDtoAPIMethod;
 import vn.saolasoft.base.api.response.*;
@@ -21,6 +22,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
+
+    // kiểm tra role từ context holder
+    private boolean isAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    }
 
     // AuditableDtoAPIMethod là lớp helper của framework: gói sẵn try-catch, log, build response chuẩn.
     private final AuditableDtoAPIMethod<ProductDtoGet, Product, String> api;
@@ -36,6 +43,26 @@ public class ProductController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof Long id) return id;
         throw new IllegalStateException("No authenticated user in context");
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<APIListResponse<List<ProductDtoGet>>> search(
+                @RequestParam(defaultValue = "") String query,
+                @RequestParam(required = false) Boolean voided,
+                @RequestParam(defaultValue = "0") int firstRow,
+                @RequestParam(defaultValue = "20") int maxResults,
+                @RequestParam(defaultValue = "") String orderBy) {
+        ProductFilter filter = new ProductFilter();
+        filter.setQuery(query);
+
+        if (isAdmin()) {
+            filter.setVoided(voided); // admin có thể lọc cả voided và unvoided
+        } else {
+            filter.setVoided(false); // user chỉ thấy unvoided
+        }
+
+        PaginationInfo pageInfo = new PaginationInfo(firstRow, maxResults, orderBy);
+        return api.search(filter, pageInfo);
     }
 
     // GET /api/products?firstRow=0&maxResults=20&orderBy=+name
@@ -82,15 +109,8 @@ public class ProductController {
                 restoredId));
     }
 
-    // POST /api/products/search
-    @PostMapping("/search")
-    public ResponseEntity<APIListResponse<List<ProductDtoGet>>> search(@RequestBody SearchRequest body) {
-        ProductFilter filter = body.getFilter();
-        PaginationInfo pageInfo = new PaginationInfo(body.getFirstRow(), body.getMaxResults(), body.getOrderBy());
-        return api.search(filter != null ? filter : new ProductFilter(), pageInfo);
-    }
-
     // GET /api/products/voided
+    @PreAuthorize("hasRole('ADMIN')") // chỉ admin mới được xem bản ghi đã xóa mềm
     @GetMapping("/voided")
     public ResponseEntity<APIListResponse<List<ProductDtoGet>>> getVoided(
             @RequestParam(defaultValue = "0")   int firstRow,
@@ -105,22 +125,4 @@ public class ProductController {
         return ResponseEntity.ok(new APIListResponse<>(header, results.getElements()));
     }
 
-    public static class SearchRequest {
-        private ProductFilter filter;
-        private int firstRow   = 0;
-        private int maxResults = 20;
-        private String orderBy = "";
-
-        public ProductFilter getFilter()    { return filter; }
-        public void setFilter(ProductFilter filter) { this.filter = filter; }
-
-        public int getFirstRow()            { return firstRow; }
-        public void setFirstRow(int v)      { this.firstRow = v; }
-
-        public int getMaxResults()          { return maxResults; }
-        public void setMaxResults(int v)    { this.maxResults = v; }
-
-        public String getOrderBy()          { return orderBy; }
-        public void setOrderBy(String v)    { this.orderBy = v; }
-    }
 }
