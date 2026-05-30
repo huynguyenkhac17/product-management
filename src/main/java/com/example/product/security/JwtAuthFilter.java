@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -30,11 +31,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             try {
                 Long userId = jwtUtil.getUserIdFromToken(token);
+                String role = jwtUtil.getRoleFromToken(token);
+
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
                             userId,
                             null,       // credentials
-                            List.of()   // Role (đang ko có)
+                            List.of(new SimpleGrantedAuthority("ROLE_" + role)) // hasRole("ADMIN") của Spring khi auth tự động thêm tiền tố ROLE_
                         );
                 SecurityContextHolder.getContext().setAuthentication(auth);  // Nhét vô context
             } catch (Exception ignored) {

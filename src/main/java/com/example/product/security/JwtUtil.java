@@ -24,14 +24,21 @@ public class JwtUtil {
     }
 
     // Tạo token
-    public String generateToken(Long userId, String username) {
+    public String generateToken(Long userId, String username, String role) {
         return Jwts.builder()
                 .subject(username)
                 .claim("userId", userId)
+                .claim("role", role) // claim role thì khi auth ko cần query xuống db nữa
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(key)
                 .compact();
+    }
+
+    // Đọc role từ token, ko cần query db
+    public String getRoleFromToken(String token) {
+        String role = validateAndGetClaims(token).get("role", String.class);
+        return role != null ? role : "USER"; // mặc định là role USER
     }
 
     // Xác thực & lấy payload

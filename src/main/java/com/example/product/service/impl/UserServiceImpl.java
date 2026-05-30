@@ -5,6 +5,7 @@ import com.example.product.dto.LoginResponse;
 import com.example.product.dto.RegisterRequest;
 import com.example.product.dto.UserDtoGet;
 import com.example.product.entity.User;
+import com.example.product.entity.Role;
 import com.example.product.repository.UserRepository;
 import com.example.product.security.JwtUtil;
 import com.example.product.service.UserService;
@@ -72,7 +73,13 @@ public class UserServiceImpl
     @Override
     public LoginResponse login(LoginRequest req) {
         User user = authenticate(req.getUsername(), req.getPassword());
-        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+
+        Long id = user.getId();
+        String userName = user.getUsername();
+        String role = user.getRole() != null ? user.getRole().name() : Role.USER.name(); // nếu ko có role thì là USER 
+
+        String token = jwtUtil.generateToken(id, userName, role); // Tạo token từ id, name, role
+
         return new LoginResponse(token, user.getId(), user.getUsername(), expirationMs);
     }
 
