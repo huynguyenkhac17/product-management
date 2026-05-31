@@ -96,8 +96,18 @@ public class ProductController {
 
     // DELETE /api/products/{id}  — xóa mềm (voided = true)
     @DeleteMapping("/{id}")
-    public ResponseEntity<APIResponse<String>> delete(@PathVariable String id) {
+    public ResponseEntity<APIResponse<String>> softDelete(@PathVariable String id) {
         return api.delete(id, currentUserId());
+    }
+
+    // DELETE /api/products/{id}/hard  — xóa cứng, chỉ admin mới được phép
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}/hard")
+    public ResponseEntity<APIResponse<String>> hardDelete(@PathVariable String id) {
+        productService.deleteByID(id, true, currentUserId());
+        return ResponseEntity.ok(new APIResponse<>(
+                new APIResponseHeader(APIResponseStatus.DELETED, "Product deleted permanently"),
+                id));
     }
 
     // POST /api/products/{id}/restore  — khôi phục bản ghi đã xóa mềm
