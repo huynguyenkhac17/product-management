@@ -27,5 +27,8 @@ Thumbs.db
 
 # Local
 *.log
+*.sh
+*.json
+.env
 .env.local
 .claude/
