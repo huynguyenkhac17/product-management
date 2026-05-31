@@ -6,6 +6,8 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import cz.jirutka.rsql.parser.RSQLParserException;
+import org.springframework.security.access.AccessDeniedException;
 
 import vn.saolasoft.base.api.response.APIResponse;
 import vn.saolasoft.base.api.response.APIResponseHeader;
@@ -49,6 +51,19 @@ public class ExceptionController {
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return build(HttpStatus.BAD_REQUEST, APIResponseStatus.INVALID_PARAMETER, msg);
+    }
+
+    // RSQL syntax sai (ví dụ: price=gt=abc, thiếu dấu bằng, phép so sánh không hỗ trợ)
+    @ExceptionHandler(RSQLParserException.class)
+    public ResponseEntity<APIResponse<Void>> handleRsql(RSQLParserException ex) {
+        return build(HttpStatus.BAD_REQUEST, APIResponseStatus.INVALID_PARAMETER,
+                    "Invalid RSQL query syntax: " + ex.getMessage());
+    }
+
+    // 403 Forbidden
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<APIResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+        return build(HttpStatus.FORBIDDEN, APIResponseStatus.FORBIDDEN, "Access denied");
     }
 
     @ExceptionHandler(Exception.class)
